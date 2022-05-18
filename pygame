@@ -1,0 +1,198 @@
+import pygame  # 匯入 pygame 模組
+import random  # 匯入 random 亂數模組
+import os  # 匯入 os 模組
+
+FPS = 60  # 遊戲畫面更新率
+
+# 顏色RGB定義
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+DEEP_SKY = (0, 104, 139)
+
+WIDTH = 500  # 遊戲視窗 寬
+HEIGHT = 600  # 遊戲視窗 高
+
+pygame.init()  # 初始化
+screen = pygame.display.set_mode((WIDTH, HEIGHT))  # 建立視窗
+pygame.display.set_caption("太空生存戰")  # 設定視窗標題
+clock = pygame.time.Clock()  # 遊戲同步時鐘
+
+# 載入圖片
+background_img = pygame.image.load(os.path.join("img", "background.png")).convert()  # 載入背景圖
+player_img = pygame.image.load(os.path.join("img", "player.png")).convert()  # 載入太空船
+rock_img = pygame.image.load(os.path.join("img", "rock.png")).convert()  # 載入隕石
+bullet_img = pygame.image.load(os.path.join("img", "bullet.png")).convert()  # 載入子彈
+
+
+class Player1(pygame.sprite.Sprite):
+    def __init__(self):  # 建構子
+        pygame.sprite.Sprite.__init__(self)  # 呼叫父類別的建構子
+        self.image = pygame.transform.scale(player_img, (50, 38))  # 使用player_img為其圖像，並縮放為50*38
+        self.image.set_colorkey(BLACK)  # 把太空船背景色key掉
+        self.rect = self.image.get_rect()  # sprite的範圍等於影像的範圍
+        self.rect.centerx = WIDTH / 2  # 把自己的水平中心定位在畫面中間
+        self.rect.bottom = HEIGHT - 10  # 把自己的底部定位在距下邊界 10
+        self.speedx = 8  # 移動速度
+
+    def update(self):  # 每一圈遊戲迴圈都會產生一個畫面，要重繪自己，需override update()
+        key_pressed = pygame.key.get_pressed()  # 取得所有按鍵狀況，存在key_pressed裏
+        if key_pressed[pygame.K_RIGHT]:  # 假如右移鍵被按下
+            self.rect.x += self.speedx  # 往右移動speedx點
+        if key_pressed[pygame.K_LEFT]:  # 假如左移鍵被按下
+            self.rect.x -= self.speedx  # 往左移動speedx點
+
+        if self.rect.right > WIDTH:  # 判斷是否撞到視窗最右邊
+            self.rect.right = WIDTH  # 停在最右邊
+        if self.rect.left < 0:  # 判斷是否撞到視窗最左邊
+            self.rect.left = 0  # 停在最左邊
+
+    def shoot(self):  # 發射子彈
+        bulleta = Bullet(self.rect.centerx+10, self.rect.top)
+        all_sprites.add(bulleta)
+        bullets.add(bulleta)
+        bullet = Bullet(self.rect.centerx-10, self.rect.top)
+        all_sprites.add(bullet)
+        bullets.add(bullet)
+
+class Player2(pygame.sprite.Sprite):
+    def __init__(self):  # 建構子
+        pygame.sprite.Sprite.__init__(self)  # 呼叫父類別的建構子
+        self.image = pygame.transform.scale(player_img, (50, 38))  # 使用player_img為其圖像，並縮放為50*38
+        self.image.set_colorkey(BLACK)  # 把太空船背景色key掉
+        self.rect = self.image.get_rect()  # sprite的範圍等於影像的範圍
+        self.rect.centerx = WIDTH / 2  # 把自己的水平中心定位在畫面中間
+        self.rect.bottom = HEIGHT - 10  # 把自己的底部定位在距下邊界 10
+        self.speedx = 8  # 移動速度
+
+    def update(self):  # 每一圈遊戲迴圈都會產生一個畫面，要重繪自己，需override update()
+        key_pressed = pygame.key.get_pressed()  # 取得所有按鍵狀況，存在key_pressed裏
+        if key_pressed[pygame.K_b]:  # 假如右移鍵被按下
+            self.rect.x += self.speedx  # 往右移動speedx點
+        if key_pressed[pygame.K_m]:  # 假如左移鍵被按下
+            self.rect.x -= self.speedx  # 往左移動speedx點
+
+        if self.rect.right > WIDTH:  # 判斷是否撞到視窗最右邊
+            self.rect.right = WIDTH  # 停在最右邊
+        if self.rect.left < 0:  # 判斷是否撞到視窗最左邊
+            self.rect.left = 0  # 停在最左邊
+
+    def shoot(self):  # 發射子彈
+        bulletb = Bullet(self.rect.centerx+10, self.rect.top)
+        all_sprites.add(bulletb)
+        bullets.add(bulletb)
+        bulletc = Bullet(self.rect.centerx-10, self.rect.top)
+        all_sprites.add(bulletc)
+        bullets.add(bulletc)
+
+class Rock(pygame.sprite.Sprite):
+    def __init__(self):  # 建構子
+        pygame.sprite.Sprite.__init__(self)  # 呼叫父類別的建構子
+        self.image = rock_img  # 使用 rock_img 為其圖像
+        self.image.set_colorkey(BLACK)  # 背景色要key掉
+        self.rect = self.image.get_rect()  # sprite的範圍等於影像的範圍
+        self.rect.x = random.randrange(0, WIDTH - self.rect.width)  # 把自己的x隨機出現在畫面寬度內
+        self.rect.y = random.randrange(-100, -40)  # 把自己的y隨機出現在畫面上界的上方
+        self.speedy = random.randrange(2, 10)  # 垂直速度, 隨機 2 ~ 10 (不含10)
+        self.speedx = random.randrange(-3, 3)  # 水平速度, 隨機 -3 ~ 3 (不含3)
+
+    def update(self):  # 每一圈遊戲迴圈都會產生一個畫面，要重繪自己，需override update()
+        self.rect.y += self.speedy
+        self.rect.x += self.speedx
+
+        if self.rect.top > HEIGHT or self.rect.left > WIDTH or self.rect.right < 0:  # 判斷是否出界
+            self.rect.x = random.randrange(0, WIDTH - self.rect.width)  # 把自己的x隨機出現在畫面寬度內
+            self.rect.y = random.randrange(-100, -40)  # 把自己的y隨機出現在畫面上界的上方
+            self.speedy = random.randrange(2, 10)  # 垂直速度, 隨機 2 ~ 10 (不含10)
+            self.speedx = random.randrange(-3, 3)  # 水平速度, 隨機 -3 ~ 3 (不含3)
+
+        if self.rect.x > player1.rect.x:
+            self.rect.x -= 3
+        elif self.rect.x < player1.rect.x:
+            self.rect.x += 3
+
+
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, x, y):  # 建構子
+        pygame.sprite.Sprite.__init__(self)  # 呼叫父類別的建構子
+        self.image = bullet_img  # 使用 bullet_img 為其圖像
+        self.image.set_colorkey(BLACK)  # 背景色要key掉
+        self.rect = self.image.get_rect()  # sprite的範圍等於影像的範圍
+        self.rect.centerx = x  # 把自己的中心x定在傳入的x座標
+        self.rect.bottom = y  # 把自己的底部定在傳入的y座標
+        self.speedy = -10  # 垂直速度,往上10
+
+    def update(self):  # 每一圈遊戲迴圈都會產生一個畫面，要重繪自己，需override update()
+        self.rect.y += self.speedy
+
+        if self.rect.bottom < 0:
+            self.kill()
+
+
+
+all_sprites = pygame.sprite.Group()  # 建立一個 sprite 群組容器，來裝遊戲中所有的角色，以便管理。
+rocks = pygame.sprite.Group()  # 建立隕石群組
+bullets = pygame.sprite.Group()  # 建立子彈群組
+
+player1 = Player1() # 建立一個 Player 物件(玩家，即太空船)
+player2 = Player2()
+all_sprites.add(player1)  # 將上述的player物件加入 all_sprites 中，以便將來統一管理。
+all_sprites.add(player2)
+
+# 產生8個隕石
+for i in range(8):
+    r = Rock()
+    all_sprites.add(r)
+    rocks.add(r)
+
+running = True  # 開啟遊戲迴圈開關
+# Game loop
+while running:  # 進入遊戲迴圈
+    clock.tick(FPS)  # 最多1秒執行FPS次，也就是每秒只能產生FPS格的畫面
+
+    # 取得玩家輸入
+    for event in pygame.event.get():  # 擷取事件
+        if event.type == pygame.QUIT:  # 假如關閉視窗
+            running = False  # 將開關關掉
+        elif event.type == pygame.KEYDOWN:  # 否則假如有按鍵按下，KEYDOWM 事件無法靠 "一直按著某鍵" 連續觸發
+            if event.key == pygame.K_DOWN:  # 假如是空白鍵
+                player1.shoot()  # 發射子彈
+            elif event.key == pygame.K_SPACE:  # 假如是空白鍵
+                player2.shoot()  # 發射子彈
+
+
+
+
+    # 底下的寫法可以連發子彈
+    '''
+    key_pressed = pygame.key.get_pressed()  # 取得所有按鍵狀況，存在key_pressed裏
+    if key_pressed[pygame.K_SPACE]:  # 假如空白鍵被按下
+        player.shoot()  # 發射子彈
+    '''
+
+    # 更新遊戲
+    all_sprites.update()  # 執行每個角色的update()來更新其變化
+
+    # 碰撞偵測
+    hits = pygame.sprite.groupcollide(rocks, bullets, True, True)  # 偵測隕石與子彈的碰撞
+    for hit in hits:
+        r = Rock()
+        all_sprites.add(r)
+        rocks.add(r)
+
+    '''''
+    hits = pygame.sprite.spritecollide(player, rocks, True)  # 偵測太空船與隕石的碰撞
+    if hits:  # 假如碰撞
+        running = False  # 離開遊戲迴圈
+    '''''
+
+    # 顯示畫面
+    screen.fill(DEEP_SKY)  # 深空藍背景
+    screen.blit(background_img, (0, 0))  # 畫出背景圖
+    all_sprites.draw(screen)  # 畫出所有角色在指定背景(screen)上
+
+    pygame.display.update()  # 更新畫面
+
+pygame.quit()  # 離開遊戲

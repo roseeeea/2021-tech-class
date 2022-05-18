@@ -1,0 +1,94 @@
+//參考文件：https://youyouyou.pixnet.net/blog/post/120275932-第十三篇-esp32-line通知：倉庫溫度異常機器人
+// Line 通知 API 申請：https://notify-bot.line.me/
+// Online API test (如上圖) : https://reqbin.com/
+
+//使用pin13(P13，非第13腳)接溫溼度感測器DATA，使用3.3V或5V皆可，
+//使用麵包板並注意方向，正負接錯很快燒壞
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <SimpleDHT.h>  //先安裝SimpleDHT函式庫
+#define pinDHT11 13
+
+char ssid[] = "TNGS_INFOLAB2";  //請修改
+char password[] = "";  //請修改
+char host[] = "notify-api.line.me";//LINE Notify API網址
+String Linetoken = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";  //請修改
+
+SimpleDHT11 dht11(pinDHT11);
+byte temperature = 0;
+byte humidity = 0;
+
+WiFiClientSecure client;//網路連線物件
+
+void setup() {
+  pinMode(pinDHT11,INPUT);
+  Serial.begin(115200);
+
+  //連線到指定的WiFi SSID
+  Serial.print("開始連線到無線網路SSID:");
+  Serial.println(ssid);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    delay(1000);
+  }
+  //連線成功，顯示取得的IP
+  Serial.println("連線完成");
+  Serial.print("IP 位址: ");
+  IPAddress ip = WiFi.localIP();
+  Serial.println(ip);  
+}
+
+void loop() {
+  if (dht11.read(&temperature, &humidity, NULL) != SimpleDHTErrSuccess) {  //讀取失敗
+    Serial.println("Read DHT11 failed."); 
+    delay(1000);
+  }
+  else{
+    Serial.print((int)temperature); Serial.print(" °C, "); 
+    Serial.print((int)humidity); Serial.println(" %RH");    
+
+    if ((int)temperature >= 33 || (int)humidity >= 70) {
+      //組成Line訊息內容，因為編碼規則的關係，有些符號不能用，如 +&%= 
+      //"%"是application/x-www-form-urlencoded編碼的前置字元，所以不能直接用，
+      //可以使用全形來代替，或使用 %25 來代替"%"， %26 來代替 &，%2B是+，%3D是=
+      //可參考: https://en.wikipedia.org/wiki/POST_(HTTP)#Use_for_submitting_web_forms
+      
+      String message = "檢測環境發生異常，目前環境狀態：";
+      message += "\n溫度＝ " + String(((int)temperature)) + " °C";
+      message += "\n濕度%3D " + String(((int)humidity)) + " %25RH";
+      Serial.println(message);
+      if (client.connect(host, 443)) {  //https port = 443
+        int LEN = message.length();  //1個中文字UTF-8編碼是3位元組, °是2位元組
+        Serial.println(LEN);
+        //傳遞POST表頭
+        String url = "/api/notify";
+        client.println("POST " + url + " HTTP/1.1");
+        client.print("Host: "); client.println(host);
+        //權杖
+        client.print("Authorization: Bearer "); client.println(Linetoken);
+        client.println("Content-Type: application/x-www-form-urlencoded");
+        client.print("Content-Length: "); 
+        client.println( String((LEN + 8)) );  //總長度還要加上"message="8個位元組
+        client.println();      
+        client.print("message=");  //這8個字元的長度要記得加入
+        client.println(message);
+        client.println();
+        //等候回應
+        delay(2000);
+        String response = client.readString();
+        //顯示傳遞結果
+        Serial.println(response);
+        client.stop(); //斷線，否則只能傳5次
+      }
+      else {
+        //傳送失敗
+        Serial.println("連線 Line API 失敗");
+      }
+    }    
+    
+  }
+  Serial.println("---------------我是分隔線----------------");
+  delay(1000*10);  //DHT11的取樣率是1Hz,因此要delay大於1秒
+}
